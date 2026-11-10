@@ -1,0 +1,19 @@
+/target/
+
+# Rust tooling
+**/*.rs.bk
+Cargo.lock
+
+# Local environment and editor files
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/
+
+# Project-local browser automation artifacts
+/.playwright-mcp/
+/target/
+/web/dist/
+/web/native/

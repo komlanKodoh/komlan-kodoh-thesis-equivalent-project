@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#071114">
+    <title>Aether // Flight Systems</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.187.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.187.0/examples/jsm/",
+          "@dimforge/rapier3d-compat": "https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <canvas id="world" aria-label="Aether three dimensional quadcopter simulation"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <section class="flight-readout" aria-label="Flight telemetry">
+      <div class="flight-mode"><span class="eyebrow">FLIGHT MODE</span><strong id="mode">PLANNING</strong></div>
+      <div class="readout-pair"><span class="eyebrow">POSITION · XYZ</span><strong id="position">12.0 / 15.0 / 0.2 m</strong></div>
+      <div class="readout-pair"><span class="eyebrow">GROUND SPEED</span><strong id="speed-readout">0.0 m/s</strong></div>
+      <div class="readout-pair"><span class="eyebrow">MISSION RANGE</span><strong id="goal-distance">— m</strong></div>
+      <div class="readout-pair"><span class="eyebrow">SAFETY LAYER</span><strong id="safety-state">PROTECTION ACTIVE</strong></div>
+    </section>
+
+    <pre id="safety-debug" hidden aria-live="polite"></pre>
+
+    <aside id="hud" class="hud">
+      <div class="hud-heading">
+        <div><span class="eyebrow">FLIGHT STUDIO</span><h1>Mission <span> / 001</span></h1></div>
+        <button id="collapse" class="quiet-button" type="button">COLLAPSE</button>
+      </div>
+      <div class="hud-content">
+        <section class="console-section">
+          <div class="section-title"><span>01</span> MISSION CONTROL</div>
+          <button id="autopilot" class="primary-button" data-enabled="false" type="button">START SIMULATION</button>
+          <div class="speed-control"><label for="speed">CRUISE SPEED</label><span id="speed-value">30.0 m/s</span></div>
+          <input id="speed" type="range" min="1" max="40" step="0.5" value="30">
+          <div class="section-title sub-title">MISSION TARGET · XYZ METERS</div>
+          <div class="position-fields">
+            <label>X<input id="goal-x" type="number" min="0" max="800" step="1" value="650"></label>
+            <label>Y<input id="goal-y" type="number" min="0" max="800" step="1" value="650"></label>
+            <label>Z<input id="goal-z" type="number" min="0" max="80" step="1" value="18"></label>
+          </div>
+          <button id="pick-goal" class="secondary-button full-button" type="button">↗ PLACE TARGET IN SCENE</button>
+          <button id="set-goal" class="secondary-button full-button" type="button">SET MISSION TARGET</button>
+        </section>
+
+        <section class="console-section">
+          <div class="section-title"><span>02</span> STAGE EDITOR <small>MAP 800 × 800 M</small></div>
+          <p class="editor-intro">Shape your flight path. Place a building, or select one in the scene to edit it.</p>
+          <div class="preset-row" aria-label="Building presets">
+            <button type="button" data-preset="8,8,18">Block</button>
+            <button type="button" data-preset="12,12,60">Tower</button>
+            <button type="button" data-preset="32,6,24">Wall</button>
+          </div>
+          <div class="selection-info" id="selection-info">New building</div>
+          <div class="position-fields stage-fields">
+            <label>X<input id="stage-x" type="number" min="0" max="800" step="1" value="400"></label>
+            <label>Y<input id="stage-y" type="number" min="0" max="800" step="1" value="400"></label>
+            <label>HEIGHT<input id="stage-height" type="number" min="1" max="80" step="1" value="18"></label>
+            <label>WIDTH<input id="stage-width" type="number" min="1" max="40" step="1" value="8"></label>
+            <label>DEPTH<input id="stage-depth" type="number" min="1" max="40" step="1" value="8"></label>
+          </div>
+          <button id="place-building" class="secondary-button full-button" type="button">＋ PLACE BUILDING IN SCENE</button>
+          <div class="button-row"><button id="add-obstacle" class="secondary-button" type="button">ADD BUILDING</button><button id="remove-obstacle" class="quiet-button" type="button">REMOVE LAST</button></div>
+        <div class="button-row selection-actions">
+            <button id="apply-building" class="secondary-button" type="button" disabled>APPLY CHANGES</button>
+            <button id="delete-building" class="quiet-button" type="button" disabled>DELETE</button>
+          </div>
+        </section>
+
+        <section class="console-section">
+          <div class="section-title"><span>03</span> PILOT INPUT <button id="flight-mode" class="mode-toggle" type="button" aria-pressed="true">ANGLE MODE · ON</button></div>
+          <div class="pilot-layout">
+            <div class="stick-control"><div class="stick-label">THROTTLE / YAW <small>W/S · A/D</small></div><div class="stick" data-stick="left" aria-label="Throttle and yaw joystick"><i class="stick-cross horizontal"></i><i class="stick-cross vertical"></i><span class="stick-knob"></span></div></div>
+            <div class="stick-control"><div class="stick-label">PITCH / ROLL <small>I/K · J/L</small></div><div class="stick" data-stick="right" aria-label="Pitch and roll joystick"><i class="stick-cross horizontal"></i><i class="stick-cross vertical"></i><span class="stick-knob"></span></div></div>
+          </div>
+          <p class="hint" id="throttle-readout">THROTTLE  0% · ANGLE MODE</p>
+        </section>
+
+        <section class="console-section">
+          <div class="section-title"><span>04</span> POSITION OVERRIDE <small>METERS</small></div>
+          <div class="position-fields">
+            <label>X<input id="pos-x" type="number" step="0.5"></label>
+            <label>Y<input id="pos-y" type="number" step="0.5"></label>
+            <label>Z<input id="pos-z" type="number" min="0.18" step="0.5"></label>
+          </div>
+          <div class="button-row"><button id="set-position" class="secondary-button" type="button">SET POSITION</button><button id="reset" class="quiet-button" type="button">RESET</button></div>
+        </section>
+
+        <section class="console-section layers">
+          <div class="section-title"><span>05</span> CONTROL LAYERS <small>LIVE VISUALIZATION</small></div>
+          <button class="layer-toggle" data-layer="quad-sensors" aria-pressed="true" type="button"><i class="layer-dot cyan"></i><span><b>QUAD SENSORS</b><small>Observed objects in range</small></span><em>ON</em></button>
+          <button class="layer-toggle" data-layer="quad-mission-planner" aria-pressed="true" type="button"><i class="layer-dot green"></i><span><b>QUAD MISSION PLANNER</b><small>Current relative target</small></span><em>ON</em></button>
+          <button class="layer-toggle" data-layer="quad-controller" aria-pressed="true" type="button"><i class="layer-dot amber"></i><span><b>QUAD CONTROLLER</b><small>Four control channels and motors</small></span><em>ON</em></button>
+          <button id="safety" class="layer-toggle" data-layer="safety" aria-pressed="true" type="button"><i class="layer-dot violet"></i><span><b>COLLISION SAFETY</b><small>Final force constraint</small></span><em>ON</em></button>
+        </section>
+      </div>
+      <footer class="hud-footer"><span>RUST CONTROL CORE</span><span>60 HZ PHYSICS <i></i> 1 HZ PLANNER</span></footer>
+    </aside>
+
+    <nav class="scene-tools" aria-label="Scene editing tools">
+      <div class="tool-buttons">
+        <button type="button" data-tool="orbit" aria-pressed="true"><span>↔</span> Explore</button>
+        <button type="button" data-tool="select" aria-pressed="false"><span>↖</span> Select / move</button>
+        <button type="button" data-tool="goal" aria-pressed="false"><span>◎</span> Goal</button>
+        <button type="button" data-tool="building" aria-pressed="false"><span>＋</span> Building</button>
+      </div>
+      <div class="editor-options"><button id="undo-edit" type="button" disabled>↶ Undo building edit</button><label><input id="editor-snap" type="checkbox" checked> Snap 5 m</label><span id="editor-status" role="status">Drag to orbit · Right drag to pan · Scroll to zoom</span></div>
+    </nav>
+    <script type="module" src="scripts/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+[package]
+name = "wasm-interface"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+quad-core.workspace = true
+quad-sim.workspace = true
+wasm-bindgen.workspace = true

@@ -1,0 +1,12 @@
+[package]
+name = "bevy-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+default-run = "simulator"
+
+[dependencies]
+bevy.workspace = true
+bevy_rapier3d.workspace = true
+quad-core.workspace = true
+quad-sim.workspace = true
